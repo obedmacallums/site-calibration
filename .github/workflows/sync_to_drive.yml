@@ -1,0 +1,19 @@
+name: Sync to Google Drive
+on:
+  push:
+    branches: [ main ] # Se activa al subir cambios a la rama principal
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Sync to Drive
+        uses: adityassubramanian/gdrive-upload-action@master
+        with:
+          credentials: ${{ secrets.GCP_SA_KEY }}
+          filename: src/ # Carpeta que quieres subir
+          folderId: 1GRhqBkbs3mk_WVRvDN40boI1AYHlt0RF
+          overwrite: "true"
