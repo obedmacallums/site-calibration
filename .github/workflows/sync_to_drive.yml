@@ -11,9 +11,10 @@ jobs:
         uses: actions/checkout@v3
 
       - name: Sync to Drive
-        uses: mathisve/gdrive-upload-action@main
+        uses: mathisve/gdrive-upload-action@main #en ocasiones hay que usar otro repo
         with:
           credentials: ${{ secrets.GCP_SA_KEY }}
           filename: src/ # Carpeta que quieres subir
           folderId: 1GRhqBkbs3mk_WVRvDN40boI1AYHlt0RF
           overwrite: "true"
+          # Revisar bien el JSON del secret
