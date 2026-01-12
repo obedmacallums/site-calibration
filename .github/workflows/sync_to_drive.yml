@@ -10,30 +10,41 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
+      # 1. Comprimimos la carpeta src en un archivo .zip
+      - name: Archive src folder
+        run: |
+          if [ -d src ]; then
+            zip -r src.zip src
+            echo "✅ Carpeta comprimida correctamente."
+          else
+            echo "❌ Error: No se encuentra la carpeta src/"
+            exit 1
+          fi
+
+      # 2. Preparamos las credenciales (detecta si es JSON o Base64 y lo arregla)
       - name: Prepare credentials
         id: prepare
         env:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
           set -e
-          # Intento de aceptar tanto secret en base64 como JSON crudo.
-          # Si es base64 válido lo decodificamos; si no, lo tratamos como JSON crudo.
-          if echo "$GCP_SA_KEY" | base64 --decode >/dev/null 2>&1; then
-            echo "Credentials appear to be base64-encoded. Decoding..."
-            echo "$GCP_SA_KEY" | base64 --decode > credentials.json
+          # Intentamos decodificar. Si falla, asumimos que es JSON puro.
+          if echo "$GCP_SA_KEY" | base64 --decode > decoded.json 2>/dev/null; then
+             echo "Credential is Base64. Using decoded version."
+             mv decoded.json credentials.json
           else
-            echo "Credentials do not appear to be base64. Treating as raw JSON."
-            echo "$GCP_SA_KEY" > credentials.json
+             echo "Credential is Raw JSON. Using as is."
+             echo "$GCP_SA_KEY" > credentials.json
           fi
-          # Re-encode a base64 sin saltos para pasar a la acción que espera base64
-          CREDENTIALS_B64=$(cat credentials.json | base64 -w 0)
+          # Codificamos en una sola línea para la acción
+          CREDENTIALS_B64=$(base64 -w 0 credentials.json)
           echo "credentials_b64=$CREDENTIALS_B64" >> $GITHUB_OUTPUT
 
+      # 3. Subimos el archivo ZIP
       - name: Sync to Drive
-        uses: mathisve/gdrive-upload-action@main #en ocasiones hay que usar otro repo
+        uses: mathisve/gdrive-upload-action@v0.3.1
         with:
           credentials: ${{ steps.prepare.outputs.credentials_b64 }}
-          filename: src/ # Carpeta que quieres subir
+          filename: src.zip
           folderId: 1GRhqBkbs3mk_WVRvDN40boI1AYHlt0RF
           overwrite: "true"
-          # Revisar bien el JSON del secret
