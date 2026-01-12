@@ -10,7 +10,7 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
 
-      # 1. Comprimimos la carpeta src en un archivo .zip
+      # 1. Comprimimos la carpeta src en un archivo .zip para evitar errores de carpeta
       - name: Archive src folder
         run: |
           if [ -d src ]; then
@@ -21,14 +21,14 @@ jobs:
             exit 1
           fi
 
-      # 2. Preparamos las credenciales (detecta si es JSON o Base64 y lo arregla)
+      # 2. Preparamos las credenciales (Script robusto anti-errores de formato)
       - name: Prepare credentials
         id: prepare
         env:
           GCP_SA_KEY: ${{ secrets.GCP_SA_KEY }}
         run: |
           set -e
-          # Intentamos decodificar. Si falla, asumimos que es JSON puro.
+          # Detecta si es Base64 o JSON plano y lo normaliza
           if echo "$GCP_SA_KEY" | base64 --decode > decoded.json 2>/dev/null; then
              echo "Credential is Base64. Using decoded version."
              mv decoded.json credentials.json
@@ -36,13 +36,13 @@ jobs:
              echo "Credential is Raw JSON. Using as is."
              echo "$GCP_SA_KEY" > credentials.json
           fi
-          # Codificamos en una sola línea para la acción
+          # Codifica en una sola línea para la acción
           CREDENTIALS_B64=$(base64 -w 0 credentials.json)
           echo "credentials_b64=$CREDENTIALS_B64" >> $GITHUB_OUTPUT
 
-      # 3. Subimos el archivo ZIP
+      # 3. Subimos el archivo ZIP usando la rama main
       - name: Sync to Drive
-        uses: mathisve/gdrive-upload-action@v0.3.1
+        uses: mathisve/gdrive-upload-action@main
         with:
           credentials: ${{ steps.prepare.outputs.credentials_b64 }}
           filename: src.zip
