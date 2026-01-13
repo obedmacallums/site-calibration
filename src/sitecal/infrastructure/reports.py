@@ -31,9 +31,14 @@ def generate_markdown_report(
     report_lines.append("")
 
     # Residuals Table
-    report_lines.append("### Residuals")
+    report_lines.append("### Residuals (mm)")
     if calibration.residuals is not None:
-        report_lines.append(calibration.residuals.to_markdown(index=False))
+        residuals_mm = calibration.residuals.copy()
+        residuals_mm["dE"] = (residuals_mm["dE"] * 1000).round(1)
+        residuals_mm["dN"] = (residuals_mm["dN"] * 1000).round(1)
+        residuals_mm["dH"] = (residuals_mm["dH"] * 1000).round(1)
+        residuals_mm.rename(columns={"dE": "dE (mm)", "dN": "dN (mm)", "dH": "dH (mm)"}, inplace=True)
+        report_lines.append(residuals_mm.to_markdown(index=False))
     else:
         report_lines.append("No residuals were calculated.")
     report_lines.append("")
@@ -50,12 +55,12 @@ def generate_markdown_report(
         std_dev = residuals[["dE", "dN", "dH"]].std().to_dict()
         percentile_99 = residuals["error_h"].quantile(0.99)
 
-        report_lines.append(f"- **Worst Point:** `{worst_point['Point']}` (Error: {worst_point['error_h']:.4f} m)")
-        report_lines.append(f"- **Best Point:** `{best_point['Point']}` (Error: {best_point['error_h']:.4f} m)")
-        report_lines.append("- **Standard Deviations:**")
+        report_lines.append(f"- **Worst Point:** `{worst_point['Point']}` (Error: {(worst_point['error_h'] * 1000):.1f} mm)")
+        report_lines.append(f"- **Best Point:** `{best_point['Point']}` (Error: {(best_point['error_h'] * 1000):.1f} mm)")
+        report_lines.append("- **Standard Deviations (mm):**")
         for axis, value in std_dev.items():
-            report_lines.append(f"  - `{axis}`: {value:.4f} m")
-        report_lines.append(f"- **99th Percentile of Horizontal Errors:** {percentile_99:.4f} m")
+            report_lines.append(f"  - `{axis}`: {(value * 1000):.1f} mm")
+        report_lines.append(f"- **99th Percentile of Horizontal Errors:** {(percentile_99 * 1000):.1f} mm")
 
     else:
         report_lines.append("Statistics could not be calculated.")
