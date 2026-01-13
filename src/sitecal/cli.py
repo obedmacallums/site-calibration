@@ -1,7 +1,9 @@
 import typer
 from pathlib import Path
 from typing import Optional
+from enum import Enum
 import pandas as pd
+from importlib import metadata
 
 from sitecal.core.projections import ProjectionFactory
 from sitecal.core.calibration_engine import CalibrationFactory
@@ -9,6 +11,10 @@ from sitecal.infrastructure.reports import generate_markdown_report
 from sitecal.io import read_csv_to_dataframe
 
 app = typer.Typer(no_args_is_help=True)
+
+class CalibrationMethod(str, Enum):
+    tbc = "tbc"
+    ltm = "ltm"
 
 @app.callback()
 def main() -> None:
@@ -18,7 +24,7 @@ def main() -> None:
 @app.command()
 def version() -> None:
     """Print version."""
-    typer.echo("sitecal 0.3.0") # Increased version
+    typer.echo(f"sitecal {metadata.version('sitecal')}")
 
 @app.command()
 def local2global(
@@ -26,7 +32,7 @@ def local2global(
     local_csv: Path = typer.Option(..., "--local-csv", exists=True, readable=True, help="CSV with local coordinates (Point,Easting,Northing,h_local)"),
     output_report: Path = typer.Option("calibration_report.md", help="Output report in Markdown format."),
     output_csv: Optional[Path] = typer.Option(None, help="Output CSV with transformed coordinates."),
-    method: str = typer.Option("tbc", "--method", help="Calibration method: [tbc|ltm]"),
+    method: CalibrationMethod = typer.Option("tbc", "--method", help="Calibration method"),
     # LTM parameters
     central_meridian: Optional[float] = typer.Option(None, help="LTM Central Meridian"),
     latitude_of_origin: Optional[float] = typer.Option(None, help="LTM Latitude of Origin"),
@@ -44,13 +50,8 @@ def local2global(
     df_global = read_csv_to_dataframe(global_csv)
     df_local = read_csv_to_dataframe(local_csv)
 
-    # Validate method
-    if method not in ["tbc", "ltm"]:
-        typer.echo(f"Error: Method '{method}' is not supported. Choose from [tbc|ltm].", err=True)
-        raise typer.Exit(code=1)
-
     # Validate required LTM parameters if method is ltm
-    if method == "ltm":
+    if method.value == "ltm":
         ltm_params = [central_meridian, latitude_of_origin, false_easting, false_northing, scale_factor]
         if any(p is None for p in ltm_params):
             typer.echo("Error: For LTM method, all LTM parameters are required.", err=True)
@@ -64,17 +65,17 @@ def local2global(
         "false_northing": false_northing,
         "scale_factor": scale_factor,
     }
-    projection = ProjectionFactory.create(method, **projection_params)
+    projection = ProjectionFactory.create(method.value, **projection_params)
     df_global_proj = projection.project(df_global)
 
     # --- Calibration Step (2D Similarity) ---
-    calibration = CalibrationFactory.create(method)
+    calibration = CalibrationFactory.create(method.value)
     calibration.train(df_local, df_global_proj)
     
     typer.echo("Calibration training completed.")
 
     # --- Reporting Step ---
-    generate_markdown_report(calibration, output_report, method)
+    generate_markdown_report(calibration, output_report, method.value)
     typer.echo(f"Calibration report generated at: {output_report}")
     
     # --- Transformation & Output Step ---
