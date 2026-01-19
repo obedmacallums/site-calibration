@@ -106,7 +106,10 @@ async def calibrate(
         report_text = generate_markdown_report(engine, "not_needed_anymore", method)
         
         # Prepare response
-        params = CalibrationParameters(**engine.params)
+        params = CalibrationParameters(
+            horizontal=engine.horizontal_params,
+            vertical=engine.vertical_params
+        )
         residuals = [
             ResidualPoint(
                 Point=str(row["Point"]), 

@@ -22,6 +22,8 @@ dependencies = [
   "uvicorn",
   "python-multipart",
   "pytz",
+  "streamlit",
+  "requests",
 ]
 
 [project.scripts]

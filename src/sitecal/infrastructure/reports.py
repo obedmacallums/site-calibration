@@ -23,24 +23,43 @@ def generate_markdown_report(
     report_lines.append(f"## Calibration Method: {method.upper()}")
     report_lines.append("")
 
-    # Transformation Parameters
-    report_lines.append("### Transformation Parameters")
+    # Horizontal Transformation Parameters (2D)
+    report_lines.append("### 🏗️ Ajuste Horizontal (2D)")
     report_lines.append("")
-    if calibration.params:
-        params_df = pd.DataFrame([calibration.params])
-        report_lines.append(params_df.to_markdown(index=False))
+    if calibration.horizontal_params:
+        hp = calibration.horizontal_params
+        report_lines.append("- **Factor de Escala (a):** " + f"`{hp['a']:.6f}`")
+        report_lines.append("- **Término de Rotación (b):** " + f"`{hp['b']:.6f}`")
+        report_lines.append("- **Traslación Este:** " + f"`{hp['tE']:.3f} m`")
+        report_lines.append("- **Traslación Norte:** " + f"`{hp['tN']:.3f} m`")
+        
+        # Derived: Scale and Rotation
+        scale = (hp['a']**2 + hp['b']**2)**0.5
+        import math
+        rotation_rad = math.atan2(hp['b'], hp['a'])
+        rotation_deg = math.degrees(rotation_rad)
+        rotation_dms_d = int(rotation_deg)
+        rotation_dms_m = int((abs(rotation_deg) - abs(rotation_dms_d)) * 60)
+        rotation_dms_s = (abs(rotation_deg) - abs(rotation_dms_d) - rotation_dms_m/60) * 3600
+        
+        report_lines.append(f"- **Escala Implícita:** `{scale:.8f}`")
+        report_lines.append(f"- **Rotación Implícita:** `{rotation_dms_d}° {rotation_dms_m}' {rotation_dms_s:.1f}\"`")
+
     else:
-        report_lines.append("No parameters were calculated.")
+        report_lines.append("No se calcularon parámetros horizontales.")
     report_lines.append("")
     
-    # Parameters Summary
-    report_lines.append("### Calculated Parameters")
+    # Vertical Adjustment Parameters (Inclined Plane)
+    report_lines.append("### 📐 Ajuste Vertical (1D)")
     report_lines.append("")
-    if calibration.params:
-        for key, value in calibration.params.items():
-            report_lines.append(f"- **{key}:** `{value}`")
+    if calibration.vertical_params:
+        vp = calibration.vertical_params
+        report_lines.append(f"- **Desplazamiento Vertical (Shift):** `{vp['vertical_shift']:.3f} m`")
+        report_lines.append(f"- **Inclinación Norte:** `{vp['slope_north']*1e6:.2f} ppm`")
+        report_lines.append(f"- **Inclinación Este:** `{vp['slope_east']*1e6:.2f} ppm`")
+        report_lines.append(f"- **Centroide (N, E):** `({vp['centroid_north']:.3f}, {vp['centroid_east']:.3f})`")
     else:
-        report_lines.append("No parameters were calculated.")
+        report_lines.append("No se calcularon parámetros verticales.")
     report_lines.append("")
 
     # Residuals Table
