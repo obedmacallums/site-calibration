@@ -1,18 +1,31 @@
 import streamlit as st
 import pandas as pd
-import requests
 import io
+import numpy as np
+
+# Core Imports for Offline Processing
+from sitecal.core.calibration_engine import CalibrationFactory
+from sitecal.core.projections import ProjectionFactory
+from sitecal.infrastructure.reports import generate_markdown_report
+
+def validate_collinearity(df: pd.DataFrame) -> bool:
+    """Checks for collinearity in points."""
+    if "Easting_global" not in df.columns or "Northing_global" not in df.columns:
+        return False
+    coords = df[["Easting_global", "Northing_global"]].values
+    if len(coords) < 3: return False
+    centered = coords - np.mean(coords, axis=0)
+    cov = np.cov(centered, rowvar=False)
+    eigvals = np.linalg.eigvals(cov)
+    if np.max(eigvals) == 0: return True
+    return (np.min(eigvals) / np.max(eigvals)) < 1e-4
 
 def main():
-    st.set_page_config(page_title="Calibración de Obra", page_icon="🛰️", layout="wide")
+    st.set_page_config(page_title="Site Calibration (Offline)", page_icon="🛰️", layout="wide")
     
-    st.title("Herramienta de Calibración de Obra")
-    st.markdown("Sube tus coordenadas globales (GNSS) y locales (Planas) para calcular los parámetros de calibración.")
+    st.title("Site Calibration Tool (Monolith)")
+    st.markdown("Cálculo local y seguro. No requiere conexión a internet.")
 
-    # Sidebar for API Configuration
-    st.sidebar.header("Configuración")
-    api_url = st.sidebar.text_input("URL de la API", value="https://site-calibration-api-845253769460.us-central1.run.app/calibrate")
-    
     # Instructions
     with st.expander("ℹ️ Instrucciones de Formato CSV (Importante)"):
         st.markdown("""
@@ -20,21 +33,10 @@ def main():
         **Formato:** Coordenadas Geodésicas WGS84 (Grados Decimales)
         * **Columnas Requeridas:** `Point` (ID), `Latitude`, `Longitude`, `Ellipsoidal Height` (o `h`)
         * **Precisión:** Al menos **8 decimales** en Lat/Lon para asegurar precisión milimétrica.
-        * **Ejemplo:**
-        ```csv
-        Point,Latitude,Longitude,h
-        100,-33.45678912, -70.65432198, 500.123
-        ```
 
         ### Archivo Local (Planas)
         **Formato:** Coordenadas Cartesianas Locales (Metros)
         * **Columnas Requeridas:** `Point` (ID), `Easting` (Este), `Northing` (Norte), `Elevation` (o `z`, `h`)
-        * **Ejemplo:**
-        ```csv
-        Point,Easting,Northing,Elevation
-        100,500123.456,1000789.012,100.456
-        ```
-        *Nota: El ID (Point) debe coincidir exactamente en ambos archivos.*
         """)
         
     # Main Input Section
@@ -72,7 +74,15 @@ def main():
             l_e = st.selectbox("Easting", cols_l, index=1 if len(cols_l)>1 else 0, key="l_e")
             l_n = st.selectbox("Northing", cols_l, index=2 if len(cols_l)>2 else 0, key="l_n")
             l_z = st.selectbox("Elevation", cols_l, index=3 if len(cols_l)>3 else 0, key="l_z")
-
+            
+            # Helper Visualization
+            st.markdown("##### Geometría Local")
+            try:
+                # Simple scatter of local coords
+                chart_data = local_df.rename(columns={l_e: "Easting", l_n: "Northing"})
+                st.scatter_chart(chart_data, x="Easting", y="Northing", color="#FF4B4B")
+            except Exception:
+                st.caption("No se pudo generar la previsualización gráfica.")
 
     # Method Selection and Parameters
     st.subheader("Método y Parámetros")
@@ -85,69 +95,72 @@ def main():
     if method == "LTM":
         with col_params:
             c1, c2, c3, c4 = st.columns(4)
-            with c1:
-                params["central_meridian"] = st.number_input("Meridiano Central", value=-72.0)
-            with c2:
-                params["scale_factor"] = st.number_input("Factor de Escala", value=0.9996, format="%.6f")
-            with c3:
-                params["false_easting"] = st.number_input("Falso Este", value=500000.0)
-            with c4:
-                params["false_northing"] = st.number_input("Falso Norte", value=10000000.0)
+            with c1: params["central_meridian"] = st.number_input("Meridiano Central", value=-72.0)
+            with c2: params["scale_factor"] = st.number_input("Factor de Escala", value=0.9996, format="%.6f")
+            with c3: params["false_easting"] = st.number_input("Falso Este", value=500000.0)
+            with c4: params["false_northing"] = st.number_input("Falso Norte", value=10000000.0)
 
     # Action
     st.markdown("---")
-    if st.button("Calcular Calibración", type="primary", use_container_width=True):
+    if st.button("Calcular Calibración (Offline)", type="primary", use_container_width=True):
         if global_df is None or local_df is None:
             st.error("Por favor sube ambos archivos CSV (Global y Local).")
             return
 
-        with st.spinner("Calculando parámetros de calibración..."):
+        with st.spinner("Procesando localmente..."):
             try:
-                # Prepare Global CSV
+                # 1. Standardize Inputs (Strict naming for Core)
                 df_g_ready = global_df.rename(columns={
-                    g_point: "Point",
-                    g_lat: "Latitude",
-                    g_lon: "Longitude", 
-                    g_h: "EllipsoidalHeight"
+                    g_point: "Point", g_lat: "Latitude", g_lon: "Longitude", g_h: "EllipsoidalHeight"
                 })[["Point", "Latitude", "Longitude", "EllipsoidalHeight"]]
-                
-                # Prepare Local CSV
+                # Ensure Point is string
+                df_g_ready["Point"] = df_g_ready["Point"].astype(str)
+
                 df_l_ready = local_df.rename(columns={
-                    l_point: "Point",
-                    l_e: "Easting",
-                    l_n: "Northing",
-                    l_z: "Elevation"
+                    l_point: "Point", l_e: "Easting", l_n: "Northing", l_z: "Elevation"
                 })[["Point", "Easting", "Northing", "Elevation"]]
+                df_l_ready["Point"] = df_l_ready["Point"].astype(str)
 
-                # Convert to CSV in memory
-                buffer_g = io.StringIO()
-                df_g_ready.to_csv(buffer_g, index=False)
+                # 2. Projection
+                proj_params = {k: v for k, v in params.items()}
+                projection = ProjectionFactory.create(method.lower(), **proj_params)
+                df_g_proj = projection.project(df_g_ready)
+
+                # 3. Merge
+                merged_df = pd.merge(df_l_ready, df_g_proj, on="Point", suffixes=('_local', '_global'))
+                if len(merged_df) < 3:
+                    st.error(f"Error: Solo se encontraron {len(merged_df)} puntos comunes. Se requieren mínimo 3.")
+                    return
                 
-                buffer_l = io.StringIO()
-                df_l_ready.to_csv(buffer_l, index=False)
+                if validate_collinearity(merged_df):
+                    st.error("Error: Los puntos son colineales o geográficamente muy cercanos. Geometría inestable.")
+                    return
 
-                files = {
-                    "global_csv": ("global.csv", buffer_g.getvalue(), "text/csv"),
-                    "local_csv": ("local.csv", buffer_l.getvalue(), "text/csv"),
+                # 4. Calibration Engine
+                engine = CalibrationFactory.create(method.lower())
+                engine.train(df_l_ready, df_g_proj)
+
+                # 5. Build Result Object (Mimicking API response structure for reuse)
+                residuals = [
+                    {"Point": str(row["Point"]), "dE": float(row["dE"]), "dN": float(row["dN"]), "dH": float(row["dH"])}
+                    for _, row in engine.residuals.iterrows()
+                ]
+                
+                report_text = generate_markdown_report(engine, "not_used", method.lower())
+                
+                result_data = {
+                    "parameters": {
+                        "horizontal": engine.horizontal_params,
+                        "vertical": engine.vertical_params
+                    },
+                    "residuals": residuals,
+                    "report": report_text
                 }
                 
-                # Prepare query parameters
-                query_params = {"method": method.lower()} # Ensure lower case for API
-                if method == "LTM":
-                    query_params.update(params)
+                display_results(result_data)
 
-                # Make API request
-                response = requests.post(api_url, files=files, params=query_params)
-                
-                if response.status_code == 200:
-                    data = response.json()
-                    display_results(data)
-                else:
-                    st.error(f"Error de API ({response.status_code}): {response.text}")
-            except requests.exceptions.ConnectionError:
-                 st.error("No se pudo conectar a la API. Por favor verifica la URL.")
             except Exception as e:
-                st.error(f"Ocurrió un error: {str(e)}")
+                st.error(f"Error Interno: {str(e)}")
 
 def display_results(data):
     # 1. Calculated Parameters

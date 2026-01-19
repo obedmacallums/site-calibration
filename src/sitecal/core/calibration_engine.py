@@ -143,12 +143,12 @@ class Similarity2D(Calibration):
             x = df["Easting"].values
             y = df["Northing"].values
             
-        # Strict: Dataframe passed to transform typically comes from Global Source or Local Validation
-        # If it's the global dataframe being transformed: it has 'EllipsoidalHeight'
-        if "Elevation" in df.columns:
-             h_input = df["Elevation"].values
-        elif "EllipsoidalHeight" in df.columns:
+        # Vertical Height Selection (Global First)
+        if "EllipsoidalHeight" in df.columns:
              h_input = df["EllipsoidalHeight"].values
+        elif "Elevation" in df.columns:
+             # Fallback for purely local ops (uncommon in strict transformations)
+             h_input = df["Elevation"].values
         else:
              h_input = np.zeros(len(df))
 
