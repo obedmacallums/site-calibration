@@ -1,0 +1,16 @@
+{
+    "name": "Site Calibration Pro",
+    "short_name": "SiteCal",
+    "start_url": "./index.html",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#0e1117",
+    "orientation": "any",
+    "icons": [
+        {
+            "src": "icon.png",
+            "sizes": "1024x1024",
+            "type": "image/png"
+        }
+    ]
+}

@@ -89,10 +89,10 @@ def main():
     col_method, col_params = st.columns([1, 3])
     
     with col_method:
-        # Only supporting Similarity2D for now as per instructions (TBC/LTM map to it internally anyway)
+        # Only supporting Similarity2D for now as per instructions (Default/LTM map to it internally anyway)
         # But User asked for Similarity2D specifically.
         # Keeping selection for UI consistency if they want to label it, but logic will force Similarity2D
-        method = st.selectbox("Seleccionar Método", ["TBC", "LTM"])
+        method = st.selectbox("Seleccionar Método", ["Default", "LTM"])
     
     params = {}
     if method == "LTM":

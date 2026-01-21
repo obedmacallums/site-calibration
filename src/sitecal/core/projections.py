@@ -11,7 +11,7 @@ class Projection(ABC):
         pass
 
 
-class TBCDefault(Projection):
+class Default(Projection):
     def project(self, df: pd.DataFrame) -> pd.DataFrame:
         """
         Uses the first point as the origin (0,0) and a scale factor of 1.
@@ -46,7 +46,7 @@ class TBCDefault(Projection):
             return df_out
             
         except ProjError as e:
-            raise RuntimeError(f"TBC Default Projection failed: {e}")
+            raise RuntimeError(f"Default Projection failed: {e}")
 
 
 class UTM(Projection):
@@ -121,8 +121,8 @@ class LTM(Projection):
 class ProjectionFactory:
     @staticmethod
     def create(method: str, **kwargs) -> Projection:
-        if method == "tbc":
-            return TBCDefault()
+        if method == "default":
+            return Default()
         elif method == "utm":
             return UTM()
         elif method == "ltm":

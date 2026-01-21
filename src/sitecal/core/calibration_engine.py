@@ -204,7 +204,7 @@ class Similarity2D(Calibration):
 class CalibrationFactory:
     @staticmethod
     def create(method: str) -> Calibration:
-        if method == "tbc" or method == "ltm":
+        if method == "default" or method == "ltm":
             return Similarity2D()
         else:
             raise ValueError(f"Unknown calibration method: {method}")

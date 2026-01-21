@@ -10,7 +10,7 @@ __pycache__/
 .Python
 build/
 develop-eggs/
-dist/
+
 downloads/
 eggs/
 .eggs/
@@ -213,3 +213,15 @@ src/sitecal/tbc_default_tm.py
 src/sitecal/commands/
 src/sitecal/csv_handler.py
 src/sitecal/csv_repository.py
+
+# Seguridad - Datos Sensibles
+data/
+*.csv
+*.xlsx
+.env
+
+# Seguridad - Datos Sensibles
+data/
+*.csv
+*.xlsx
+.env
