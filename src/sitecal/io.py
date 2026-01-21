@@ -18,13 +18,13 @@ class ControlPoint:
     N: float
     M: Optional[float] = None  # local elevation (optional)
 
-    # GNSS / global geodetic (from TBC report)
+    # GNSS / global geodetic (from Global report)
     lon: Optional[float] = None
     lat: Optional[float] = None
     h: Optional[float] = None  # ellipsoidal height
     H: Optional[float] = None  # orthometric/local height if present
 
-    # weights (TBC-ish defaults)
+    # weights (Standard defaults)
     w_h: float = 1.0
     w_v: float = 1.0
 

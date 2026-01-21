@@ -12,7 +12,7 @@ with open(local_csv, "rb") as l, open(global_csv, "rb") as g:
         "local_csv": l,
         "global_csv": g
     }
-    data = {"method": "tbc"}
+    data = {"method": "default"}
     response = requests.post(url, files=files, data=data)
     
 if response.status_code == 200:
@@ -30,7 +30,7 @@ with open("small.csv", "w") as f:
 
 with open("small.csv", "rb") as l, open(global_csv, "rb") as g:
     files = {"local_csv": l, "global_csv": g}
-    response = requests.post(url, files=files, data={"method": "tbc"})
+    response = requests.post(url, files=files, data={"method": "default"})
 
 print(f"Status Code: {response.status_code} (Expected 400)")
 print("Detail:", response.json()["detail"] if response.status_code == 400 else response.text)
@@ -45,7 +45,7 @@ with open("collinear_global.csv", "w") as f:
 
 with open("collinear_local.csv", "rb") as l, open("collinear_global.csv", "rb") as g:
     files = {"local_csv": l, "global_csv": g}
-    response = requests.post(url, files=files, data={"method": "tbc"})
+    response = requests.post(url, files=files, data={"method": "default"})
 
 print(f"Status Code: {response.status_code} (Expected 400)")
 print("Detail:", response.json()["detail"] if response.status_code == 400 else response.text)

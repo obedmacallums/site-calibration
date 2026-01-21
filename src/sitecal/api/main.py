@@ -46,7 +46,7 @@ def read_root():
 
 @app.post("/calibrate", response_model=CalibrationResult)
 async def calibrate(
-    method: str = Form("tbc"),
+    method: str = Form("default"),
     local_csv: UploadFile = File(...),
     global_csv: UploadFile = File(...),
     central_meridian: typing.Optional[float] = Form(None),

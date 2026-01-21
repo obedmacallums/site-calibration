@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "sitecal"
 version = "0.1.0"
-description = "TBC-compatible site calibration and coordinate transforms"
+description = "Industry-standard site calibration and coordinate transforms"
 readme = "README.md"
 requires-python = ">=3.11"
 dependencies = [

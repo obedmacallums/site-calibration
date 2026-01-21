@@ -1,13 +1,13 @@
 # sitecal
 
-`sitecal` is a Python-based CLI tool for performing site calibrations and coordinate transformations compatible with Trimble Business Center (TBC).
+`sitecal` is a Python-based CLI tool for performing site calibrations and coordinate transformations compatible with standard industry software.
 
 ## Key Features
 
-- **TBC Compatible**: Emulates TBC's default calibration behavior.
+- **Industry Compatible**: Emulates standard default calibration behavior.
 - **WGS84 Focus**: All transformations are performed using the WGS84 geodetic datum.
 - **Support for Local Projections**:
-  - TBC Default (Local Transverse Mercator).
+  - Default (Local Transverse Mercator).
   - UTM (Universal Transverse Mercator) with auto-zone detection.
   - Custom LTM (Local Transverse Mercator) with user-defined parameters.
 - **Transformation Engines**:
@@ -23,12 +23,14 @@
 ### Steps
 
 1. Clone the repository:
+
    ```bash
    git clone https://github.com/alvaro-arancibia/site-calibration.git
    cd site-calibration
    ```
 
 2. Create a virtual environment and install the package:
+
    ```bash
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
@@ -37,13 +39,13 @@
 
 ## Quick Start
 
-Perform a basic site calibration using the TBC default method:
+Perform a basic site calibration using the standard default method:
 
 ```bash
 sitecal local2global \
   --global-csv path/to/global_coords.csv \
   --local-csv path/to/local_coords.csv \
-  --method tbc \
+  --method default \
   --output-report report.md
 ```
 

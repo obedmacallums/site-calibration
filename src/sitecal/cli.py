@@ -13,12 +13,12 @@ from sitecal.io import read_csv_to_dataframe
 app = typer.Typer(no_args_is_help=True)
 
 class CalibrationMethod(str, Enum):
-    tbc = "tbc"
+    default = "default"
     ltm = "ltm"
 
 @app.callback()
 def main() -> None:
-    """sitecal: TBC-compatible site calibration tools."""
+    """sitecal: Standard-compatible site calibration tools."""
     pass
 
 @app.command()
@@ -32,7 +32,7 @@ def local2global(
     local_csv: Path = typer.Option(..., "--local-csv", exists=True, readable=True, help="CSV with local coordinates (Point,Easting,Northing,h_local)"),
     output_report: Path = typer.Option("calibration_report.md", help="Output report in Markdown format."),
     output_csv: Optional[Path] = typer.Option(None, help="Output CSV with transformed coordinates."),
-    method: CalibrationMethod = typer.Option("tbc", "--method", help="Calibration method"),
+    method: CalibrationMethod = typer.Option("default", "--method", help="Calibration method"),
     # LTM parameters
     central_meridian: Optional[float] = typer.Option(None, help="LTM Central Meridian"),
     latitude_of_origin: Optional[float] = typer.Option(None, help="LTM Latitude of Origin"),

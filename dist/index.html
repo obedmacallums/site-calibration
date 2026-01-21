@@ -343,7 +343,7 @@ class Similarity2D(Calibration):
             # Planar fit
             # A matrix: [1, (N - N_c), (E - E_c)]
             # We use local coordinates for the domain of the inclination as per standard practice (or translated global)
-            # TBC usually applies inclination based on position. Let's use Local Centering.
+            # Standard software usually applies inclination based on position. Let's use Local Centering.
             
             A_v = np.ones((n, 3))
             A_v[:, 1] = N_prime # Using N_prime (N_local - N_c) is a good approximation for centering
