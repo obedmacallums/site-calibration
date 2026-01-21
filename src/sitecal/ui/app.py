@@ -4,7 +4,7 @@ import io
 import numpy as np
 
 # Core Imports for Offline Processing
-from sitecal.core.calibration_engine import CalibrationFactory
+from sitecal.core.calibration_engine import Similarity2D
 from sitecal.core.projections import ProjectionFactory
 from sitecal.infrastructure.reports import generate_markdown_report
 
@@ -89,6 +89,9 @@ def main():
     col_method, col_params = st.columns([1, 3])
     
     with col_method:
+        # Only supporting Similarity2D for now as per instructions (TBC/LTM map to it internally anyway)
+        # But User asked for Similarity2D specifically.
+        # Keeping selection for UI consistency if they want to label it, but logic will force Similarity2D
         method = st.selectbox("Seleccionar Método", ["TBC", "LTM"])
     
     params = {}
@@ -137,7 +140,8 @@ def main():
                     return
 
                 # 4. Calibration Engine
-                engine = CalibrationFactory.create(method.lower())
+                # DIRECT INSTANTIATION AS REQUESTED
+                engine = Similarity2D()
                 engine.train(df_l_ready, df_g_proj)
 
                 # 5. Build Result Object (Mimicking API response structure for reuse)
