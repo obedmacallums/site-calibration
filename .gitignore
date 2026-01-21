@@ -220,8 +220,4 @@ data/
 *.xlsx
 .env
 
-# Seguridad - Datos Sensibles
-data/
-*.csv
-*.xlsx
-.env
+
