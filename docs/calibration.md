@@ -93,6 +93,7 @@ sitecal local2global \
 ### Reporte de Calibración
 
 El archivo generado (`calibration_report.md` por defecto) incluye:
+
 * Parámetros de la transformación calculada.
 * Listado de puntos utilizados con sus residuales (dE, dN).
 * Error medio cuadrático (RMS) del ajuste.

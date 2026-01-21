@@ -18,12 +18,9 @@ dependencies = [
   "typer",
   "rich",
   "tabulate",
-  "fastapi",
-  "uvicorn",
-  "python-multipart",
+  "tabulate",
   "pytz",
   "streamlit",
-  "requests",
 ]
 
 [project.scripts]
