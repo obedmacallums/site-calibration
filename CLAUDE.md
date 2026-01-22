@@ -30,17 +30,29 @@ pip install -e .
 ```
 
 ### Running the Application
+
+**Python CLI:**
 ```bash
-# CLI - Basic calibration
+# Basic calibration
 sitecal local2global --global-csv <path> --local-csv <path> --output-report report.md
 
-# CLI - LTM method with parameters
+# LTM method with parameters
 sitecal local2global --global-csv <path> --local-csv <path> --method ltm \
   --central-meridian -70.5 --latitude-of-origin -33.4 \
   --false-easting 500000 --false-northing 10000000 --scale-factor 1.0
+```
 
-# Streamlit UI
+**Python Streamlit UI:**
+```bash
 streamlit run src/sitecal/ui/app.py
+```
+
+**JavaScript Standalone (No installation needed):**
+```bash
+# Simply open in browser
+open index.html
+# or
+python -m http.server 8000  # then navigate to http://localhost:8000
 ```
 
 ### Other Commands
@@ -114,6 +126,28 @@ src/sitecal/
 - UI validates point geometry to prevent unstable calculations
 - Check eigenvalue ratio of covariance matrix: `min(eigvals) / max(eigvals) < 1e-4`
 
+### JavaScript Implementation Details
+
+The `index.html` file contains a complete reimplementation in JavaScript:
+
+**Libraries Used:**
+- `proj4js` - Coordinate transformations (equivalent to Python's pyproj)
+- `mathjs` - Matrix operations and least squares solving (equivalent to numpy)
+- `papaparse` - CSV parsing (equivalent to pandas.read_csv)
+- `chart.js` - Visualization
+
+**Key Differences from Python:**
+- Matrix operations use math.js `lusolve()` instead of numpy's `lstsq()`
+- Proj4 requires explicit projection string definitions (same format as pyproj)
+- Eigenvalue calculation for collinearity check is manual (2x2 matrix formula)
+- All data manipulation uses plain JavaScript arrays instead of pandas DataFrames
+
+**Architecture Similarity:**
+- `ProjectionEngine` class ≈ `projections.py` module
+- `CalibrationEngine` class ≈ `Similarity2D` class in `calibration_engine.py`
+- Same mathematical formulas and centered coordinate approach
+- Identical parameter calculation (a, b, tE, tN, C, slope_n, slope_e)
+
 ## Testing Calibration Changes
 
 When modifying calibration logic:
@@ -123,6 +157,41 @@ When modifying calibration logic:
 4. Ensure report generation works with calculated parameters
 5. Test edge cases: collinear points, insufficient points, missing columns
 
-## GitHub Pages Deployment
+## Implementations
 
-The PWA lives in `docs/` directory for GitHub Pages compatibility. The `docs/index.html` is a standalone Progressive Web App that can run offline.
+This project has two implementations:
+
+### 1. Python Implementation (Primary)
+Located in `src/sitecal/`:
+- CLI tool via Typer (`sitecal` command)
+- Streamlit web UI (`src/sitecal/ui/app.py`)
+- Core calibration engine with numpy/pandas
+- Uses pyproj for coordinate transformations
+
+### 2. JavaScript Implementation (Standalone)
+Located in `index.html` at project root:
+- Single-file HTML application (100% offline capable)
+- Pure JavaScript with CDN libraries:
+  - Bootstrap 5 for UI
+  - Papa Parse for CSV parsing
+  - Proj4js for coordinate projections
+  - Chart.js for geometry visualization
+  - Math.js for linear algebra
+- Complete calibration engine reimplemented in JavaScript
+- Responsive dark theme interface
+- No build step required - just open in browser
+
+**Key features of JS implementation:**
+- Real-time CSV preview and column mapping
+- Interactive geometry chart for local points
+- Support for Default, LTM, and UTM projections
+- Full 2D similarity transformation + vertical adjustment
+- Collinearity detection
+- Comprehensive results display with statistics
+- Markdown report generation with copy functionality
+
+### 3. GitHub Pages PWA
+Located in `docs/` directory:
+- Uses stlite (Streamlit compiled to WebAssembly)
+- Runs Python code in browser
+- Heavier but provides full Python Streamlit experience
