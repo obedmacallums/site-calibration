@@ -664,6 +664,72 @@
                     <div class="code-block" id="markdownReport"></div>
                 </div>
             </div>
+
+            <!-- Transform New Points -->
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5 class="mb-0">
+                        <i class="bi bi-arrow-left-right header-icon text-primary"></i>
+                        Transformar Puntos Nuevos
+                    </h5>
+                </div>
+                <div class="card-body">
+                    <p class="text-secondary small">Sube un CSV con puntos GPS nuevos para obtener sus coordenadas locales usando la calibracion activa.</p>
+                    <div class="mb-3">
+                        <input type="file" class="form-control" id="transformFile" accept=".csv">
+                    </div>
+                    <div class="form-check mb-3">
+                        <input class="form-check-input" type="checkbox" id="transformHasHeader" checked>
+                        <label class="form-check-label" for="transformHasHeader">Tiene encabezados</label>
+                    </div>
+                    <div id="transformPreview" class="preview-table mb-3" style="display:none;"></div>
+
+                    <div id="transformMapping" style="display:none;">
+                        <h6 class="text-secondary mb-2">Mapeo de Columnas</h6>
+                        <div class="row g-2 mb-3">
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small">Point (ID)</label>
+                                <select class="form-select form-select-sm" id="tPoint"></select>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small">Latitude</label>
+                                <select class="form-select form-select-sm" id="tLat"></select>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small">Longitude</label>
+                                <select class="form-select form-select-sm" id="tLon"></select>
+                            </div>
+                            <div class="col-6 col-md-3">
+                                <label class="form-label small">Ellipsoidal Height</label>
+                                <select class="form-select form-select-sm" id="tHeight"></select>
+                            </div>
+                        </div>
+                        <button type="button" class="btn btn-primary btn-sm mb-3" id="transformBtn">
+                            <i class="bi bi-arrow-left-right me-1"></i> Transformar
+                        </button>
+                    </div>
+
+                    <div id="transformResults" style="display:none;">
+                        <h6 class="text-secondary mb-2">Resultados</h6>
+                        <div class="table-responsive mb-3">
+                            <table class="table table-dark table-striped table-hover table-sm" id="transformTable">
+                                <thead>
+                                    <tr>
+                                        <th>Point</th>
+                                        <th>Easting</th>
+                                        <th>Northing</th>
+                                        <th>Elevation</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="transformBody"></tbody>
+                            </table>
+                        </div>
+                        <button type="button" class="btn btn-outline-light btn-sm" id="downloadTransformBtn">
+                            <i class="bi bi-download me-1"></i> Descargar CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
         </div>
 
         <!-- Footer -->
@@ -688,6 +754,9 @@
         let globalData = null;
         let localData = null;
         let geometryChart = null;
+        let calibratedEngine = null;
+        let calibrationMethod = null;
+        let calibrationParams = null;
 
         // ============================================
         // CSV PARSING & UI
@@ -1048,6 +1117,34 @@
                 return math.flatten(solution).toArray();
             }
 
+            transform(data) {
+                if (!this.horizontalParams || !this.verticalParams) {
+                    throw new Error('El modelo de calibracion no ha sido entrenado.');
+                }
+
+                const { a, b, tE, tN } = this.horizontalParams;
+                const { vertical_shift: C, slope_north: Sn, slope_east: Se,
+                        centroid_north: Nc, centroid_east: Ec } = this.verticalParams;
+
+                return data.map(row => {
+                    const x = parseFloat(row.Easting_global);
+                    const y = parseFloat(row.Northing_global);
+                    const h = parseFloat(row.EllipsoidalHeight);
+
+                    const E_trans = a * x - b * y + tE;
+                    const N_trans = b * x + a * y + tN;
+                    const dZ = C + Sn * (N_trans - Nc) + Se * (E_trans - Ec);
+                    const H_trans = h - dZ;
+
+                    return {
+                        Point: String(row.Point),
+                        Easting: E_trans,
+                        Northing: N_trans,
+                        Elevation: H_trans
+                    };
+                });
+            }
+
             checkCollinearity(data) {
                 if (data.length < 3) return false;
 
@@ -1397,6 +1494,11 @@ Report generated on: ${now}
                 const engine = new CalibrationEngine();
                 engine.train(standardLocal, projectedGlobal);
 
+                // Save calibration state for transform
+                calibratedEngine = engine;
+                calibrationMethod = method;
+                calibrationParams = params;
+
                 // Display results
                 displayResults(engine, method);
 
@@ -1406,6 +1508,103 @@ Report generated on: ${now}
             } finally {
                 document.getElementById('spinner').style.display = 'none';
             }
+        });
+
+        // Transform file upload
+        let transformData = null;
+        let lastTransformResults = null;
+
+        document.getElementById('transformFile').addEventListener('change', async (e) => {
+            const file = e.target.files[0];
+            if (!file) return;
+
+            const hasHeader = document.getElementById('transformHasHeader').checked;
+
+            try {
+                const result = await parseCSV(file, hasHeader);
+                transformData = result.data;
+
+                renderPreviewTable(transformData, 'transformPreview');
+
+                const columns = Object.keys(transformData[0] || {});
+                populateColumnSelects(columns, ['tPoint', 'tLat', 'tLon', 'tHeight'], [0, 1, 2, 3]);
+
+                document.getElementById('transformMapping').style.display = 'block';
+                document.getElementById('transformResults').style.display = 'none';
+            } catch (error) {
+                showAlert('Error al leer archivo de puntos nuevos: ' + error.message);
+            }
+        });
+
+        // Transform button
+        document.getElementById('transformBtn').addEventListener('click', () => {
+            if (!calibratedEngine) {
+                showAlert('No hay calibracion activa. Primero ejecuta la calibracion.');
+                return;
+            }
+            if (!transformData) {
+                showAlert('No hay datos de puntos nuevos cargados.');
+                return;
+            }
+
+            try {
+                const tPoint = document.getElementById('tPoint').value;
+                const tLat = document.getElementById('tLat').value;
+                const tLon = document.getElementById('tLon').value;
+                const tHeight = document.getElementById('tHeight').value;
+
+                // Standardize
+                const standardNew = transformData.map(row => ({
+                    Point: String(row[tPoint]),
+                    Latitude: parseFloat(row[tLat]),
+                    Longitude: parseFloat(row[tLon]),
+                    EllipsoidalHeight: parseFloat(row[tHeight])
+                })).filter(r => !isNaN(r.Latitude) && !isNaN(r.Longitude));
+
+                // Project using same method/params as calibration
+                const projected = ProjectionEngine.project(standardNew, calibrationMethod, calibrationParams);
+
+                // Transform
+                const results = calibratedEngine.transform(projected);
+                lastTransformResults = results;
+
+                // Display results table
+                const tbody = document.getElementById('transformBody');
+                tbody.innerHTML = '';
+                results.forEach(r => {
+                    const row = document.createElement('tr');
+                    row.innerHTML = `
+                        <td>${r.Point}</td>
+                        <td>${r.Easting.toFixed(4)}</td>
+                        <td>${r.Northing.toFixed(4)}</td>
+                        <td>${r.Elevation.toFixed(4)}</td>
+                    `;
+                    tbody.appendChild(row);
+                });
+
+                document.getElementById('transformResults').style.display = 'block';
+            } catch (error) {
+                showAlert('Error al transformar: ' + error.message);
+                console.error(error);
+            }
+        });
+
+        // Download transform CSV
+        document.getElementById('downloadTransformBtn').addEventListener('click', () => {
+            if (!lastTransformResults || lastTransformResults.length === 0) return;
+
+            const header = 'Point,Easting,Northing,Elevation\n';
+            const rows = lastTransformResults.map(r =>
+                `${r.Point},${r.Easting.toFixed(4)},${r.Northing.toFixed(4)},${r.Elevation.toFixed(4)}`
+            ).join('\n');
+
+            const blob = new Blob([header + rows], { type: 'text/csv' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'transformed_points.csv';
+            a.click();
+            URL.revokeObjectURL(url);
         });
 
         // Initialize
